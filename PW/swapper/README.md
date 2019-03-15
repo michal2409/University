@@ -62,4 +62,4 @@
 <p>przeprowadzi walidację rozwiązania studenta o identyfikatorze <code>ab123456</code>. Komunikat <code>OK</code> poinformuje o sukcesie.</p>
 <p>Rozwiązania, które pomyślnie przejdą walidację, zostaną dopuszczone do testów poprawności.</p>
 <hr>
-<p>Na pytania do treści zadania odpowiada <a href="mailto:zaroda@mimuw.edu.pl">Artur Zaroda</a>.</p></div></div><div class="submissionstatustable"><h3>Status przesłanego zadania</h3><div class="box boxaligncenter submissionsummarytable"><table class="generaltable">
+<p>Na pytania do treści zadania odpowiada <a href="mailto:zaroda@mimuw.edu.pl">Artur Zaroda</a>.</p></div></div><div class="submissionstatustable">
