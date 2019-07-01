@@ -31,4 +31,5 @@ class CityscapesDataset(Dataset):
 def fetch_dataloader(data_dir, batch_size, augment=None):
     dataset = CityscapesDataset(data_dir, augment=augment)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+    
     return dataloader

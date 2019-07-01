@@ -20,15 +20,16 @@ class CityscapesDataset(Dataset):
         X = plt.imread(self.path + '/X/' + self.filenames[index]) * 255
         Y = plt.imread(self.path + '/Y/' + self.filenames[index]) * 255
         label = plt.imread(self.path + '/labeled/' + self.filenames[index]) * 255
-
+        
         if self.augment:
             X, label = self.augment(X, label)
-
+        
         X = self.toTensor(X)
-
+        
         return X, Y, label, self.filenames[index]
-
+    
 def fetch_dataloader(data_dir, batch_size, augment=None):
     dataset = CityscapesDataset(data_dir, augment=augment)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+    
     return dataloader

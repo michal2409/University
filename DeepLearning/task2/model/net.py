@@ -5,14 +5,12 @@ class Unet(nn.Module):
         super(Unet, self).__init__()
         self.num_classes = num_classes
         self.in_channels = in_channels
-
         self.input_channels = [self.in_channels, 64, 128, 256, 512]
         self.output_channels = self.input_channels[1:] + [1024]
         self.is_pooling = [True, True, True, True, False]
-
         self.down_convs = []
         self.up_convs = []
-
+        
         for i in range(len(self.input_channels)):
             down_conv = DownConv(self.input_channels[i], self.output_channels[i], self.is_pooling[i])
             self.down_convs.append(down_conv)
@@ -22,13 +20,12 @@ class Unet(nn.Module):
             self.up_convs.append(up_conv)
 
         self.conv_final = conv1x1(self.input_channels[1], self.num_classes)
-
         self.down_convs = nn.ModuleList(self.down_convs)
         self.up_convs = nn.ModuleList(self.up_convs)
 
     def forward(self, x):
         encoder_outs = []
-
+         
         for module in self.down_convs:
             x, x_unpooled = module(x)
             encoder_outs.append(x_unpooled)

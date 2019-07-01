@@ -72,7 +72,7 @@ if __name__ == '__main__':
         for filename in tqdm(splited_sets[split]):
             img = plt.imread(filename) * 255
             X, Y = img[:, :IMG_SIZE, :], img[:, IMG_SIZE:, :]
-            labeled = convert_to_label_fast(Y.astype(np.uint8))
+            labeled = convert_to_label_fast(Y.astype(np.uint16))
 
             fname = os.path.basename(os.path.normpath(filename))
             imageio.imwrite(os.path.join(output_dir_X, fname), X.astype(np.uint8))

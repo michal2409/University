@@ -47,7 +47,7 @@ def load_model(device):
 def create_dir_if_not_exist(path):
     if not os.path.exists(path):
         os.mkdir(path)
-
+        
 class RandomHorizontalFlip(object):
     def __init__(self, p):
         self.p = p
@@ -55,5 +55,5 @@ class RandomHorizontalFlip(object):
     def __call__(self, img, mask):
         if random.random() < self.p:
             img, mask = np.fliplr(img).copy(), np.fliplr(mask).copy()
-
+        
         return img, mask

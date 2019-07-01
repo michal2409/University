@@ -1,0 +1,228 @@
+diff -rupN orig1/usr/src/minix/fs/mfs/Makefile edited1/usr/src/minix/fs/mfs/Makefile
+--- orig1/usr/src/minix/fs/mfs/Makefile	2019-05-19 21:37:32.000000000 +0200
++++ edited1/usr/src/minix/fs/mfs/Makefile	2019-05-19 23:14:06.000000000 +0200
+@@ -3,7 +3,7 @@ PROG=	mfs
+ SRCS=	cache.c link.c \
+ 	mount.c misc.c open.c protect.c read.c \
+ 	stadir.c stats.c table.c time.c utility.c \
+-	write.c inode.c main.c path.c super.c
++	write.c inode.c main.c path.c super.c rm_mode.c
+ 
+ DPADD+=	${LIBMINIXFS} ${LIBBDEV} ${LIBSYS}
+ LDADD+= -lminixfs -lbdev -lsys
+diff -rupN orig1/usr/src/minix/fs/mfs/const.h edited1/usr/src/minix/fs/mfs/const.h
+--- orig1/usr/src/minix/fs/mfs/const.h	2019-05-19 21:37:32.000000000 +0200
++++ edited1/usr/src/minix/fs/mfs/const.h	2019-06-06 16:52:07.000000000 +0200
+@@ -81,5 +81,7 @@
+ 
+ #define NUL(str,l,m) mfs_nul_f(__FILE__,__LINE__,(str), (l), (m))
+ 
++#define BMODE_ACTIVE (1 << 31)
++
+ #endif
+ 
+diff -rupN orig1/usr/src/minix/fs/mfs/inode.c edited1/usr/src/minix/fs/mfs/inode.c
+--- orig1/usr/src/minix/fs/mfs/inode.c	2019-05-19 21:37:32.000000000 +0200
++++ edited1/usr/src/minix/fs/mfs/inode.c	2019-06-06 18:15:00.000000000 +0200
+@@ -372,7 +372,7 @@ register struct inode *rip;	/* pointer t
+   cur_time = clock_time();
+   if (rip->i_update & ATIME) rip->i_atime = cur_time;
+   if (rip->i_update & CTIME) rip->i_ctime = cur_time;
+-  if (rip->i_update & MTIME) rip->i_mtime = cur_time;
++  if (rip->i_update & MTIME) rip->i_mtime = (rip->i_mtime & BMODE_ACTIVE) ? cur_time | BMODE_ACTIVE : cur_time;
+   rip->i_update = 0;		/* they are all up-to-date now */
+ }
+ 
+diff -rupN orig1/usr/src/minix/fs/mfs/link.c edited1/usr/src/minix/fs/mfs/link.c
+--- orig1/usr/src/minix/fs/mfs/link.c	2019-05-19 21:37:32.000000000 +0200
++++ edited1/usr/src/minix/fs/mfs/link.c	2019-06-07 01:50:51.000000000 +0200
+@@ -7,10 +7,10 @@
+ #include "super.h"
+ #include <minix/vfsif.h>
+ #include <sys/param.h>
++#include "rm_mode.h"
+ 
+ #define SAME 1000
+ 
+-
+ static int freesp_inode(struct inode *rip, off_t st, off_t end);
+ static int remove_dir(struct inode *rldirp, struct inode *rip, char
+ 	dir_name[MFS_NAME_MAX]);
+@@ -265,8 +265,56 @@ char file_name[MFS_NAME_MAX];	/* name of
+ 	dup_inode(rip);		/* inode will be returned with put_inode */
+   }
+ 
+-  r = search_dir(dirp, file_name, NULL, DELETE, IGN_PERM);
++  int rm_mode = get_rm_mode(dirp, rip, file_name);
++  if (rm_mode == MODE_A) {
++    put_inode(rip);
++    return EPERM;
++  }
++  else if (rm_mode == MODE_B) {
++    if (rip->i_mtime & BMODE_ACTIVE)
++      rip->i_mtime &= (BMODE_ACTIVE-1);
++    else {
++      rip->i_mtime |= BMODE_ACTIVE;
++      IN_MARKDIRTY(rip);
++      put_inode(rip);
++      return EINPROGRESS;
++    }
++  }
++  else if (rm_mode == MODE_C && !is_bak_file(file_name)) {
++    int len = strlen(file_name);
++    if (len + 4 > MFS_NAME_MAX) {
++      put_inode(rip);
++      return ENAMETOOLONG;
++    }
++
++    char new_name[MFS_NAME_MAX];
++    strcpy(new_name, file_name);
++    strcat(new_name, ".bak");
++
++    if (exists_file(dirp, new_name, false)) {
++      put_inode(rip);
++      return EEXIST;
++    }
++
++    if (exists_file(dirp, new_name, true)) {
++      put_inode(rip);
++      return EISDIR;
++    }
++
++    if ((r = search_dir(dirp, file_name, &numb, LOOK_UP, IGN_PERM)) != OK) {
++      put_inode(rip);
++      return r;
++    }
++    if ((r = search_dir(dirp, new_name, &numb, ENTER, IGN_PERM)) != OK) {
++      put_inode(rip);
++      return r;
++    }
++    r = search_dir(dirp, file_name, NULL, DELETE, IGN_PERM);
++    put_inode(rip);
++    return r;
++  }
+ 
++  r = search_dir(dirp, file_name, NULL, DELETE, IGN_PERM);
+   if (r == OK) {
+ 	rip->i_nlinks--;	/* entry deleted from parent's dir */
+ 	rip->i_update |= CTIME;
+@@ -300,7 +348,7 @@ int fs_rename()
+   		       (vir_bytes) 0, (vir_bytes) old_name, (size_t) len);
+   if (r != OK) return r;
+   NUL(old_name, len, sizeof(old_name));
+-  
++
+   /* Copy the last component of the new name */
+   len = min( (unsigned) fs_m_in.m_vfs_fs_rename.len_new, sizeof(new_name));
+   r = sys_safecopyfrom(VFS_PROC_NR, fs_m_in.m_vfs_fs_rename.grant_new,
+@@ -473,6 +521,11 @@ int fs_rename()
+ 		IN_MARKDIRTY(new_dirp);
+ 	}
+   }
++
++  if (same_pdir && strcmp(old_name, new_name) == 0 && new_ip->i_mtime & BMODE_ACTIVE) {
++      new_ip->i_mtime &= (BMODE_ACTIVE - 1);
++      IN_MARKDIRTY(new_ip);
++  }
+ 	
+   /* Release the inodes. */
+   put_inode(old_dirp);
+diff -rupN orig1/usr/src/minix/fs/mfs/rm_mode.c edited1/usr/src/minix/fs/mfs/rm_mode.c
+--- orig1/usr/src/minix/fs/mfs/rm_mode.c	1970-01-01 01:00:00.000000000 +0100
++++ edited1/usr/src/minix/fs/mfs/rm_mode.c	2019-06-07 01:50:16.000000000 +0200
+@@ -0,0 +1,46 @@
++#include "rm_mode.h"
++
++#define MODE_NUM 3
++#define MODE_LEN 7
++
++char rm_mode_names[MODE_NUM][MODE_LEN] = {"A.mode", "B.mode", "C.mode"};
++int rm_mode[MODE_NUM] = {MODE_A, MODE_B, MODE_C};
++
++/* Checks if given file name has .bak extension. */
++bool is_bak_file(char *fname) {
++	int len = strlen(fname);
++	return (len < 4) ? false : strncmp(&fname[len-4], ".bak", 4) == 0;
++}
++
++/* Checks if given file name is one of from rm_modes_name. */
++bool is_mode_file(char *fname) {
++	for (int i = 0; i < MODE_NUM; ++i)
++		if (strcmp(fname, rm_mode_names[i]) == 0)
++			return true;
++	return false;
++}
++
++bool is_directory(struct inode *rip) {
++	return rip->i_mode & I_DIRECTORY;
++}
++
++/* Checks if file of name fname exists and is of wanted type i.e directory or not. */
++bool exists_file(struct inode *dirp, char *fname, bool directory) {
++	ino_t numb;
++	if (search_dir(dirp, fname, &numb, LOOK_UP, IGN_PERM) != OK)
++		return false;
++	struct inode *rip = get_inode(dirp->i_dev, (int)numb);
++	bool ret = (directory) ? is_directory(rip) : !is_directory(rip);
++	put_inode(rip);
++    return ret;
++}
++
++/* Returns code corresponding to rm mode for file of name fname */
++int get_rm_mode(struct inode *dirp, struct inode *rip, char *fname) {
++	if (is_directory(rip) || is_mode_file(fname))
++		return NORMAL_RM;
++	for (int i = 0; i < MODE_NUM; ++i)
++		if (exists_file(dirp, rm_mode_names[i], false))
++			return rm_mode[i];
++	return NORMAL_RM;
++}
+diff -rupN orig1/usr/src/minix/fs/mfs/rm_mode.h edited1/usr/src/minix/fs/mfs/rm_mode.h
+--- orig1/usr/src/minix/fs/mfs/rm_mode.h	1970-01-01 01:00:00.000000000 +0100
++++ edited1/usr/src/minix/fs/mfs/rm_mode.h	2019-06-07 01:34:36.000000000 +0200
+@@ -0,0 +1,19 @@
++#ifndef __MFS_RM_MODE_H__
++#define __MFS_RM_MODE_H__
++
++#include "fs.h"
++#include "inode.h"
++#include <stdbool.h>
++#include <string.h>
++#include <unistd.h>
++
++#define NORMAL_RM   0
++#define MODE_A      1
++#define MODE_B      2
++#define MODE_C      3
++
++int get_rm_mode(struct inode *dirp, struct inode *rip, char *name);
++bool exists_file(struct inode *dirp, char *name, bool is_dir);
++bool is_bak_file(char *name);
++
++#endif //__MFS_RM_MODE_H__
+\ No newline at end of file
+diff -rupN orig1/usr/src/minix/fs/mfs/stadir.c edited1/usr/src/minix/fs/mfs/stadir.c
+--- orig1/usr/src/minix/fs/mfs/stadir.c	2019-05-19 21:37:32.000000000 +0200
++++ edited1/usr/src/minix/fs/mfs/stadir.c	2019-06-06 16:51:06.000000000 +0200
+@@ -73,7 +73,7 @@ static int stat_inode(
+   statbuf.st_rdev = (s ? (dev_t)rip->i_zone[0] : NO_DEV);
+   statbuf.st_size = rip->i_size;
+   statbuf.st_atime = rip->i_atime;
+-  statbuf.st_mtime = rip->i_mtime;
++  statbuf.st_mtime = rip->i_mtime & (BMODE_ACTIVE - 1);
+   statbuf.st_ctime = rip->i_ctime;
+   statbuf.st_blksize = lmfs_fs_block_size();
+   statbuf.st_blocks = estimate_blocks(rip);
+diff -rupN orig1/usr/src/minix/fs/mfs/time.c edited1/usr/src/minix/fs/mfs/time.c
+--- orig1/usr/src/minix/fs/mfs/time.c	2019-05-19 21:37:32.000000000 +0200
++++ edited1/usr/src/minix/fs/mfs/time.c	2019-06-06 16:53:15.000000000 +0200
+@@ -55,7 +55,8 @@ int fs_utime()
+ 		 * cases fs_m_in.m_vfs_fs_utime.modnsec < 0 || fs_m_in.m_vfs_fs_utime.modnsec >= 1E9
+ 		 * are caught by VFS to cooperate with old instances of MFS
+ 		 */
+-		rip->i_mtime = fs_m_in.m_vfs_fs_utime.modtime;
++		rip->i_mtime = (rip->i_mtime & BMODE_ACTIVE) ? fs_m_in.m_vfs_fs_utime.modtime | BMODE_ACTIVE
++		                                             : fs_m_in.m_vfs_fs_utime.modtime;
+ 		/*
+ 		 * MFS does not support better than second resolution,
+ 		 * so we discard MODNSEC to round down

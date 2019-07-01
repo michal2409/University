@@ -22,7 +22,7 @@ def plot(preds, y):
             image[r][c] = check_array[preds[r][c]]
     image[:, 256:, :] = y
     return image
-
+    
 plot_fast = jit(uint16[:,:](uint16[:,:], uint16[:,:,:]))(plot)
 
 def plot_image(model, path, path_y = None):
@@ -36,7 +36,7 @@ def plot_image(model, path, path_y = None):
         X, y = img, plt.imread(path_y) * 255
     else:
         X, y = img[:, :256, :], img[:, 256:, :]
-
+    
     with torch.no_grad():
         X, y = transformer(X), torch.from_numpy(y)
         X.unsqueeze_(0)
@@ -62,7 +62,7 @@ def plot_validation(model):
             preds, y = preds.cpu().numpy(), y.numpy()
             for b in range(preds.shape[0]):
                 image = plot_fast(preds[b], y[b])
-                imageio.imwrite('preds/' + fname[b], image.astype(np.uint8))
+                imageio.imwrite('preds/' + fname[b], image.astype(np.uint8))               
 
 if __name__ == '__main__':
     model = load_model(device)

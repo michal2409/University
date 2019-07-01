@@ -1,0 +1,307 @@
+Binary files usr_orig/.DS_Store and usr1/.DS_Store differ
+diff -rupN usr_orig/include/minix/callnr.h usr1/include/minix/callnr.h
+--- usr_orig/include/minix/callnr.h	2019-04-15 14:19:20.000000000 +0200
++++ usr1/include/minix/callnr.h	2019-04-27 18:27:14.000000000 +0200
+@@ -58,8 +58,9 @@
+ #define PM_GETEPINFO		(PM_BASE + 45)
+ #define PM_GETPROCNR		(PM_BASE + 46)
+ #define PM_GETSYSINFO		(PM_BASE + 47)
++#define PM_DISTORT_TIME		(PM_BASE + 48)
+ 
+-#define NR_PM_CALLS		48	/* highest number from base plus one */
++#define NR_PM_CALLS		49	/* highest number from base plus one */
+ 
+ /*===========================================================================*
+  *				Calls to VFS				     *
+diff -rupN usr_orig/include/unistd.h usr1/include/unistd.h
+--- usr_orig/include/unistd.h	2019-04-15 14:19:29.000000000 +0200
++++ usr1/include/unistd.h	2019-04-28 22:20:28.000000000 +0200
+@@ -411,5 +411,7 @@ extern	 int optreset;		/* getopt(3) exte
+ extern	 char *suboptarg;	/* getsubopt(3) external variable */
+ #endif
+ 
++int distort_time(pid_t pid, uint8_t scale);
++
+ __END_DECLS
+ #endif /* !_UNISTD_H_ */
+Binary files usr_orig/src/.DS_Store and usr1/src/.DS_Store differ
+diff -rupN usr_orig/src/include/unistd.h usr1/src/include/unistd.h
+--- usr_orig/src/include/unistd.h	2019-04-15 15:08:46.000000000 +0200
++++ usr1/src/include/unistd.h	2019-04-28 22:20:33.000000000 +0200
+@@ -411,5 +411,7 @@ extern	 int optreset;		/* getopt(3) exte
+ extern	 char *suboptarg;	/* getsubopt(3) external variable */
+ #endif
+ 
++int distort_time(pid_t pid, uint8_t scale);
++
+ __END_DECLS
+ #endif /* !_UNISTD_H_ */
+diff -rupN usr_orig/src/lib/libc/misc/Makefile.inc usr1/src/lib/libc/misc/Makefile.inc
+--- usr_orig/src/lib/libc/misc/Makefile.inc	2019-04-15 15:09:30.000000000 +0200
++++ usr1/src/lib/libc/misc/Makefile.inc	2019-04-29 12:00:26.000000000 +0200
+@@ -7,4 +7,4 @@
+ SRCS+=	initfini.c
+ 
+ # for -fstack-protector
+-SRCS+=	stack_protector.c
++SRCS+=	stack_protector.c distort_time.c
+diff -rupN usr_orig/src/lib/libc/misc/distort_time.c usr1/src/lib/libc/misc/distort_time.c
+--- usr_orig/src/lib/libc/misc/distort_time.c	1970-01-01 01:00:00.000000000 +0100
++++ usr1/src/lib/libc/misc/distort_time.c	2019-04-29 12:00:18.000000000 +0200
+@@ -0,0 +1,25 @@
++#include <lib.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/types.h>
++#include <unistd.h>
++#include <minix/rs.h>
++
++int get_pm_endpt(endpoint_t *pt) {
++	return minix_rs_lookup("pm", pt);
++}
++
++int distort_time(pid_t pid, uint8_t scale) {
++	endpoint_t pm_pt;
++	message m;
++
++	if (get_pm_endpt(&pm_pt) != 0) {
++		errno = ENOSYS;
++		return -1;
++	}
++
++	m.m1_i1 = pid;
++	m.m1_ull1 = scale;
++	int res = _syscall(pm_pt, PM_DISTORT_TIME, &m);
++	return (res == -1) ? errno : res;
++}
+\ No newline at end of file
+Binary files usr_orig/src/minix/.DS_Store and usr1/src/minix/.DS_Store differ
+diff -rupN usr_orig/src/minix/include/minix/callnr.h usr1/src/minix/include/minix/callnr.h
+--- usr_orig/src/minix/include/minix/callnr.h	2019-04-15 15:14:13.000000000 +0200
++++ usr1/src/minix/include/minix/callnr.h	2019-04-27 18:27:22.000000000 +0200
+@@ -58,8 +58,9 @@
+ #define PM_GETEPINFO		(PM_BASE + 45)
+ #define PM_GETPROCNR		(PM_BASE + 46)
+ #define PM_GETSYSINFO		(PM_BASE + 47)
++#define PM_DISTORT_TIME		(PM_BASE + 48)
+ 
+-#define NR_PM_CALLS		48	/* highest number from base plus one */
++#define NR_PM_CALLS		49	/* highest number from base plus one */
+ 
+ /*===========================================================================*
+  *				Calls to VFS				     *
+Binary files usr_orig/src/minix/servers/.DS_Store and usr1/src/minix/servers/.DS_Store differ
+diff -rupN usr_orig/src/minix/servers/pm/Makefile usr1/src/minix/servers/pm/Makefile
+--- usr_orig/src/minix/servers/pm/Makefile	2019-04-15 15:15:15.000000000 +0200
++++ usr1/src/minix/servers/pm/Makefile	2019-04-27 18:31:17.000000000 +0200
+@@ -4,7 +4,7 @@
+ PROG=	pm
+ SRCS=	main.c forkexit.c exec.c time.c alarm.c \
+ 	signal.c utility.c table.c trace.c getset.c misc.c \
+-	profile.c mcontext.c schedule.c
++	profile.c mcontext.c schedule.c distort_time.c
+ 
+ DPADD+=	${LIBSYS} ${LIBTIMERS}
+ LDADD+=	-lsys -ltimers
+diff -rupN usr_orig/src/minix/servers/pm/distort_time.c usr1/src/minix/servers/pm/distort_time.c
+--- usr_orig/src/minix/servers/pm/distort_time.c	1970-01-01 01:00:00.000000000 +0100
++++ usr1/src/minix/servers/pm/distort_time.c	2019-04-29 14:01:20.000000000 +0200
+@@ -0,0 +1,60 @@
++#include "pm.h"
++#include "mproc.h"
++
++#include <stdio.h>
++
++/* flag for processes relation */
++#define NO_RELATION 0
++#define IS_CHILD    1
++#define IS_PARENET  2
++
++/* For process @pid returns it's index in mproc or -1 if not found. */
++int find_proc_idx(pid_t pid) {
++	for (int i = 0; i < NR_PROCS; ++i)
++		if ((mproc[i].mp_flags & IN_USE) && mproc[i].mp_pid == pid)
++			return i;
++	return -1;
++}
++
++/* Checks if @child_idx is child of @parent_idx. */
++int is_child(int child_idx, int parent_idx) {
++	for (int i = child_idx; i != mproc[i].mp_parent; i = mproc[i].mp_parent)
++		if (mproc[i].mp_parent == parent_idx)
++			return IS_CHILD;
++	return NO_RELATION;
++}
++
++/* Checks relations of idx_p and idx_c. */
++int give_relation(int idx_p, int idx_c) {
++	if (is_child(idx_c, idx_p))
++		return IS_PARENET;
++	return is_child(idx_p, idx_c);
++}
++
++void set_distortion(int idx_p, int idx_c, int relation, uint8_t scale) {
++	register struct dproc *rdp = &dproc[idx_p];
++	rdp->scale = scale;
++	if (relation == IS_PARENET)  /* deley is represented by negative value of scale */
++		rdp->scale *= (-1);
++	if (rdp->flag == UNINIT)
++		rdp->flag = INIT_SCALE;
++}
++
++int do_distort_time() {
++	int idx_p, relation;
++	pid_t pid_p = m_in.m1_i1;
++	uint8_t scale = m_in.m1_ull1;
++
++	if ((idx_p = find_proc_idx(pid_p)) == -1)
++		return EINVAL;
++
++	if (pid_p == mproc[who_p].mp_pid)
++		return EPERM;
++
++	if ((relation = give_relation(idx_p, who_p)) == NO_RELATION)
++		return EPERM;
++
++	set_distortion(idx_p, who_p, relation, scale);
++
++	return OK;
++}
+\ No newline at end of file
+diff -rupN usr_orig/src/minix/servers/pm/forkexit.c usr1/src/minix/servers/pm/forkexit.c
+--- usr_orig/src/minix/servers/pm/forkexit.c	2019-04-15 15:15:15.000000000 +0200
++++ usr1/src/minix/servers/pm/forkexit.c	2019-04-29 13:07:43.000000000 +0200
+@@ -91,6 +91,8 @@ int do_fork()
+ 	(void) sigemptyset(&rmc->mp_sigtrace);
+   }
+ 
++  dproc[next_child].flag = UNINIT;  /* forked process has no scale nor reference point */
++
+   /* Some system servers like to call regular fork, such as RS spawning
+    * recovery scripts; in this case PM will take care of their scheduling
+    * because RS cannot do so for non-system processes */
+diff -rupN usr_orig/src/minix/servers/pm/main.c usr1/src/minix/servers/pm/main.c
+--- usr_orig/src/minix/servers/pm/main.c	2019-04-15 15:15:15.000000000 +0200
++++ usr1/src/minix/servers/pm/main.c	2019-04-29 13:07:56.000000000 +0200
+@@ -183,6 +183,9 @@ static int sef_cb_init_fresh(int UNUSED(
+   		(void) sigemptyset(&rmp->mp_ignore);	
+   		(void) sigemptyset(&rmp->mp_sigmask);
+   		(void) sigemptyset(&rmp->mp_catch);
++
++      dproc[ip->proc_nr].flag = UNINIT;   /* originally process has no scale nor reference point */ 
++
+ 		if (ip->proc_nr == INIT_PROC_NR) {	/* user process */
+   			/* INIT is root, we make it father of itself. This is
+   			 * not really OK, INIT should have no father, i.e.
+diff -rupN usr_orig/src/minix/servers/pm/mproc.h usr1/src/minix/servers/pm/mproc.h
+--- usr_orig/src/minix/servers/pm/mproc.h	2019-04-15 15:15:16.000000000 +0200
++++ usr1/src/minix/servers/pm/mproc.h	2019-04-29 13:07:39.000000000 +0200
+@@ -72,6 +72,18 @@ EXTERN struct mproc {
+   int mp_magic;			/* sanity check, MP_MAGIC */
+ } mproc[NR_PROCS];
+ 
++EXTERN struct dproc {
++  int16_t scale;    /* scale for time distortion */
++  uint64_t sec;     /* reference point seconds */
++  uint64_t nsec;    /* reference point nano seconds */
++  int flag;         /* flag for initialization scale and reference point */
++} dproc[NR_PROCS];
++
++/* Flag for dproc array */
++#define UNINIT      0      /* set when uninitalized scale and reference point */
++#define INIT_SCALE  1      /* set when initialized scale but not reference point */
++#define INIT_REF    2      /* set when initalized both scale and reference point */
++
+ /* Flag values */
+ #define IN_USE		0x00001	/* set when 'mproc' slot in use */
+ #define WAITING		0x00002	/* set by WAITPID system call */
+diff -rupN usr_orig/src/minix/servers/pm/proto.h usr1/src/minix/servers/pm/proto.h
+--- usr_orig/src/minix/servers/pm/proto.h	2019-04-15 15:15:16.000000000 +0200
++++ usr1/src/minix/servers/pm/proto.h	2019-04-27 18:30:24.000000000 +0200
+@@ -89,3 +89,6 @@ struct mproc *find_proc(pid_t lpid);
+ int nice_to_priority(int nice, unsigned *new_q);
+ int pm_isokendpt(int ep, int *proc);
+ void tell_vfs(struct mproc *rmp, message *m_ptr);
++
++/* distort_time.c */
++int do_distort_time(void);
+diff -rupN usr_orig/src/minix/servers/pm/table.c usr1/src/minix/servers/pm/table.c
+--- usr_orig/src/minix/servers/pm/table.c	2019-04-15 15:15:16.000000000 +0200
++++ usr1/src/minix/servers/pm/table.c	2019-04-27 18:30:57.000000000 +0200
+@@ -58,5 +58,6 @@ int (* const call_vec[NR_PM_CALLS])(void
+ 	CALL(PM_EXEC_RESTART)	= do_execrestart,
+ 	CALL(PM_GETEPINFO)	= do_getepinfo,		/* getepinfo(2) */
+ 	CALL(PM_GETPROCNR)	= do_getprocnr,		/* getprocnr(2) */
+-	CALL(PM_GETSYSINFO)	= do_getsysinfo		/* getsysinfo(2) */
++	CALL(PM_GETSYSINFO)	= do_getsysinfo,		/* getsysinfo(2) */
++	CALL(PM_DISTORT_TIME) = do_distort_time
+ };
+diff -rupN usr_orig/src/minix/servers/pm/time.c usr1/src/minix/servers/pm/time.c
+--- usr_orig/src/minix/servers/pm/time.c	2019-04-15 15:15:16.000000000 +0200
++++ usr1/src/minix/servers/pm/time.c	2019-04-29 13:38:59.000000000 +0200
+@@ -15,6 +15,8 @@
+ #include <sys/time.h>
+ #include "mproc.h"
+ 
++#define NSEC 1000000000ULL
++
+ /*===========================================================================*
+  *				do_gettime				     *
+  *===========================================================================*/
+@@ -75,6 +77,10 @@ int do_settime()
+ 
+   switch (m_in.m_lc_pm_time.clk_id) {
+ 	case CLOCK_REALTIME:
++    for (int i = 0; i < NR_PROCS; ++i)  // Reseting reference point
++      if (dproc[i].flag == INIT_REF)
++        dproc[i].flag = INIT_SCALE;
++
+ 		s = sys_settime(m_in.m_lc_pm_time.now, m_in.m_lc_pm_time.clk_id,
+ 			m_in.m_lc_pm_time.sec, m_in.m_lc_pm_time.nsec);
+ 		return(s);
+@@ -103,7 +109,44 @@ int do_time()
+ 
+   mp->mp_reply.m_pm_lc_time.sec = boottime + (realtime / system_hz);
+   mp->mp_reply.m_pm_lc_time.nsec =
+-	(uint32_t) ((realtime % system_hz) * 1000000000ULL / system_hz);
++	(uint32_t) ((realtime % system_hz) * NSEC / system_hz);
++
++  register struct dproc *rdp = &dproc[who_p];
++  switch (rdp->flag) {
++    case INIT_SCALE:  // setting reference point
++      rdp->sec = mp->mp_reply.m_pm_lc_time.sec;
++      rdp->nsec = mp->mp_reply.m_pm_lc_time.nsec;
++      rdp->flag = INIT_REF;
++      break;
++    case INIT_REF:    // distort time
++      if (rdp->scale == 0) {  // special case, time stays in reference point
++        mp->mp_reply.m_pm_lc_time.sec = rdp->sec;
++        mp->mp_reply.m_pm_lc_time.nsec = rdp->nsec;
++        break;
++      }
++
++      int16_t scale = rdp->scale;
++      uint64_t sec_after_ref = mp->mp_reply.m_pm_lc_time.sec - rdp->sec;
++      uint64_t nsec_after_ref = mp->mp_reply.m_pm_lc_time.nsec - rdp->nsec;
++      if (mp->mp_reply.m_pm_lc_time.nsec < rdp->nsec) {  // nanosec overflow
++        --sec_after_ref;
++        nsec_after_ref = NSEC - (rdp->nsec - mp->mp_reply.m_pm_lc_time.nsec);
++      }
++
++      uint64_t nsec = rdp->nsec;
++      if (rdp->scale < 0) {
++        scale *= (-1);
++        nsec += (nsec_after_ref + (sec_after_ref % scale) * NSEC) / scale;
++        mp->mp_reply.m_pm_lc_time.sec = sec_after_ref / scale;
++      }
++      else {
++        nsec += nsec_after_ref * scale;
++        mp->mp_reply.m_pm_lc_time.sec = sec_after_ref * scale;
++      }
++      mp->mp_reply.m_pm_lc_time.sec += rdp->sec + nsec / NSEC;
++      mp->mp_reply.m_pm_lc_time.nsec = nsec % NSEC;
++  }
++
+   return(OK);
+ }
+ 
