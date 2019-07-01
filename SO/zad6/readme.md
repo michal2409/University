@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pl"><head>
-  <title>Systemy operacyjne, zadanie 3</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 </head><body>

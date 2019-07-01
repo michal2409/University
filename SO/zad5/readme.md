@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html lang='pl'>
   <head>
-    <title>Systemy operacyjne, zadanie 5</title>
     <meta content='text/html; charset=UTF-8' http-equiv='content-type'>
     <link href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css' rel='stylesheet'>
   </head>
   <body>
     <div class='container'>
-
-
       <h2>Zadanie 5</h2>
       <p>
 				Najprawdopodobniej każdej i każdemu z nas zdarzyło się choć raz usunąć
@@ -26,15 +23,12 @@
 				W poniższym opisie słowo <i>plik</i> jest używane w znaczeniu zwykłego
 				pliku, nie katalogu.
       </p>
-
-
       <h3>Usuwanie plików</h3>
       <p>
         Zmodyfikowany serwer działa tak samo jak normalny <code>mfs</code> za
         wyjątkiem operacji usuwania. Jeśli użytkownik będzie próbował usunąć plik
         (nie katalog), to działanie serwera zależy od aktywnego trybu:
       </p>
-
       <h4>Tryb A</h4>
       <p>
 				W tym trybie próba usunięcia pliku powinna się po prostu nie powieść.
@@ -55,7 +49,6 @@ A.mode plik
 				Polecenie <code>echo $?</code> wyświetla status zakończenia (ang.
 				<i>exit status</i>) poprzedniego polecenia.
 			</p>
-
 			<h4>Tryb B</h4>
 			<p>
 				Gdy aktywny jest ten tryb, aby skutecznie usunąć plik należy wywołać
@@ -90,7 +83,6 @@ B.mode plik
 # ls
 B.mode
 </pre>
-
 			<h4>Tryb C</h4>
 			<p>
 				Działając w tym trybie, serwer zamiast usunąć plik, zmienia mu nazwę,
@@ -118,8 +110,6 @@ C.mode plik.bak
 # ls
 C.mode
 </pre>
-
-
 			<h3>Sterowanie trybami</h3>
 			<p>
 				Aby serwer wykonywał usuwanie plików w sposób niestandardowy, użytkownik
@@ -139,8 +129,6 @@ C.mode
 				może realizować operację usuwania w dowolny sposób, ale nie może ona
 				uszkodzić systemu plików lub samego serwera.
 			</p>
-
-
       <h3>Wymagania i niewymagania</h3>
       <ol>
         <li>
@@ -196,7 +184,6 @@ C.mode
 					2037 roku.
 				</li>
 			</ol>
-
       <h3>Wskazówki</h3>
       <ol>
         <li>
@@ -260,8 +247,6 @@ C.mode
 					działania systemu plików tylko od 2019 do 2037 roku.
         </li>
       </ol>
-
-
       <h3>Rozwiązanie</h3>
       <p>
 				Poniżej przyjmujemy, że ab123456 oznacza identyfikator studenta
@@ -276,29 +261,6 @@ C.mode
 				rozwiązania w repozytorium to <b><del>4 czerwca 2019, godz. 20.00</del>
 				9 czerwca 2019, godz. 23:59</b>.
 			</p>
-
-
-      <h3>Ocenianie</h3>
-      <p>
-				Oceniana będą zarówno poprawność, jak i styl rozwiązania. Podstawą do
-				oceny rozwiązania będą testy automatyczne i przejrzenie kodu przez
-				sprawdzającego. Za poprawną i w dobrym stylu implementację obsługi
-				usuwania plików w trybach A, B i C można otrzymać odpowiednio 1, 2 i 2 pkt.
-				Rozwiązanie, w którym łatka nie nakłada się poprawnie, które nie
-				kompiluje się lub powoduje <code>kernel panic</code> podczas
-				uruchamiania otrzyma 0 pkt.
-			</p>
-
-
-      <h3>Pytania</h3>
-      <p>
-				Pytania do zadania należy kierować na adres
-				<i>BanaszekMateusz@mimuw.edu.pl</i> z <code>[SOzad5]</code> w temacie,
-				a odpowiedzi na często zadawane pytania szukać w pliku
-				<a href="faq.html">faq.html</a>.
-			</p>
-
-
     </div>
   </body>
 </html>
