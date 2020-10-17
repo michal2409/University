@@ -1,0 +1,45 @@
+int x = 10;
+{
+	int x = 1;
+	print(x);				// 1
+}
+print(x);					// 10
+
+int f() {
+	int g() {
+		int h() {
+			return 1;
+		}
+		return h() + 1;
+	}
+	return g() + 1;
+}
+
+print (f()); 				// 3
+
+
+void f1() {
+    print(x);
+}
+
+void g() {
+    int x = 111;
+    f1();                   // 10
+}
+
+g();
+
+void h() {
+    int x = 43;
+    void g() {
+        print(x);
+    }
+    
+    void g1() {
+        int x = 1;
+        g();               // 43
+    }
+    g1();
+}
+
+h();

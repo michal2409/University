@@ -1,0 +1,6 @@
+int f() {
+    return 5;
+}
+
+return;     // return outside function
+print(f());

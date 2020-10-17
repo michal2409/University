@@ -1,0 +1,21 @@
+// three types int bool string
+int a = 10;
+bool b = true;
+string c = "test";
+
+print(a);             	// 10
+print(b);				// true
+print(c);				// test
+
+// arithmetics
+print(a + 1);			// 11
+print(a - 8);			// 2
+print(a / 2);			// 5
+print(4 * 2);			// 8
+
+// comparisons
+print(1 < a);			// True
+print(b == true);		// True
+print(c == "test");		// True
+print(c == "a");		// False
+print(c != "a");		// True

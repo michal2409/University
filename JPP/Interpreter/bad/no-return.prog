@@ -1,0 +1,3 @@
+int f() {
+    print(5); // no return
+}

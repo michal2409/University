@@ -1,0 +1,65 @@
+// reccurent factorial
+int fact (int n) {
+	if (n <= 1) {
+		return 1;
+	}
+	return n * fact(n-1);
+}
+
+print(fact(5));                 // 120
+
+// procedures
+void f() {
+	fact(5);
+	return;
+}
+
+f();
+
+// passing by value
+int g(int x, int y) {
+	return x+y;
+}
+
+int x = 2;
+print(g(1, x));                 // 3
+
+// passing by reference
+void h(int& a, int b) {
+	a = 123;
+	b = 123;
+	return;
+}
+
+int y = 1;
+int z = 2;
+h(y, z);
+print(y); 						// 123
+print(z); 						// 2
+
+// arbitrary args and return values
+string fun(int a, bool b, string c, List<int> l) {
+	l = l.append(a);
+	if (b) {
+		return c;
+	}
+	else {
+		return "test2";
+	}
+}
+
+int q = 1;
+bool w = false;
+string s = "test1";
+List <int> l = [1,2,3];
+
+print(fun(q,w,s,l));			// test2
+print(fun(q,!w,s,l));			// test1
+
+
+List <int> f1(List<int> l) {
+	return l.append(123);
+}
+
+print(f1(l));					// [1,2,3,123]
+
